@@ -1,5 +1,7 @@
+import csv
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
 
 from models import SecurityEvent
 
@@ -30,7 +32,7 @@ EVENT_TYPES = [
 ]
 
 
-def generate_event(event_id: str) -> SecurityEvent:
+def generate_event(event_id: str, timestamp: datetime) -> SecurityEvent:
     """Generate one normal security event."""
 
     user = random.choice(USERS)
@@ -39,7 +41,7 @@ def generate_event(event_id: str) -> SecurityEvent:
 
     return SecurityEvent(
         event_id=event_id,
-        timestamp=datetime.now(),
+        timestamp=timestamp,
         event_type=event_type,
         user=user,
         source_ip=f"192.168.10.{random.randint(10, 250)}",
@@ -48,7 +50,57 @@ def generate_event(event_id: str) -> SecurityEvent:
         description=f"{user} performed {event_type} on {asset}",
     )
 
+
+def save_events(events: list[SecurityEvent], output_file: Path) -> None:
+    """Save security events to a CSV file."""
+
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_file.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+
+        writer.writerow([
+            "event_id",
+            "timestamp",
+            "event_type",
+            "user",
+            "source_ip",
+            "source_asset",
+            "destination_asset",
+            "description",
+        ])
+
+        for event in events:
+            writer.writerow([
+                event.event_id,
+                event.timestamp.isoformat(),
+                event.event_type,
+                event.user,
+                event.source_ip,
+                event.source_asset,
+                event.destination_asset,
+                event.description,
+            ])
+
+
 if __name__ == "__main__":
-    for number in range(1, 11):
-        event = generate_event(f"EVT-{number:06d}")
-        print(event)
+    events = []
+
+    start_time = datetime.now() - timedelta(hours=2)
+
+    for number in range(1, 101):
+        timestamp = start_time + timedelta(minutes=number)
+
+        event = generate_event(
+            f"EVT-{number:06d}",
+            timestamp,
+        )
+
+        events.append(event)
+
+    output_path = Path("data/events.csv")
+
+    save_events(events, output_path)
+
+    print(f"Generated {len(events)} security events.")
+    print(f"Saved to: {output_path}")
